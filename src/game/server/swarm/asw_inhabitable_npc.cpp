@@ -3,6 +3,8 @@
 #include "asw_player.h"
 #include "asw_weapon.h"
 #include "env_tonemap_controller.h"
+#include "asw_triggers.h"
+#include "world.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -27,6 +29,7 @@ BEGIN_DATADESC( CASW_Inhabitable_NPC )
 	DEFINE_FIELD( m_hPostProcessController, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_hColorCorrection, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_hTonemapController, FIELD_EHANDLE ),
+	DEFINE_FIELD( m_hFallTrigger, FIELD_EHANDLE ),
 END_DATADESC()
 
 BEGIN_ENT_SCRIPTDESC( CASW_Inhabitable_NPC, CBaseCombatCharacter, "Alien Swarm Inhabitable NPC" )
@@ -195,4 +198,63 @@ void CASW_Inhabitable_NPC::OnTonemapTriggerStartTouch( CTonemapTrigger *pTonemap
 void CASW_Inhabitable_NPC::OnTonemapTriggerEndTouch( CTonemapTrigger *pTonemapTrigger )
 {
 	m_hTriggerTonemapList.FindAndRemove( pTonemapTrigger );
+}
+
+void CASW_Inhabitable_NPC::SetFallTrigger( CASW_Trigger_Fall *pTrigger )
+{
+	Assert( pTrigger );
+
+	m_hFallTrigger = pTrigger;
+
+	if ( !pTrigger->m_bApplyDamageOnLanding )
+	{
+		ApplyFallDamage( -GetAbsVelocity().z );
+	}
+}
+
+void CASW_Inhabitable_NPC::ApplyFallDamage( float flVelocity )
+{
+	CTakeDamageInfo info( GetWorldEntity(), GetWorldEntity(), 0, DMG_FALL );
+
+	CASW_Trigger_Fall *pFallTrigger = m_hFallTrigger;
+	m_hFallTrigger = NULL;
+
+	float flDamageScale = GetDefaultFallDamageScale();
+	if ( pFallTrigger )
+	{
+		flDamageScale = pFallTrigger->m_flVelocityDamageScale;
+		info.SetInflictor( pFallTrigger );
+		info.SetAttacker( pFallTrigger );
+		info.AddDamage( pFallTrigger->m_nFlatDamage );
+	}
+
+	if ( info.GetDamage() <= 0 && flDamageScale <= 0 )
+	{
+		return;
+	}
+
+	if ( GetGroundEntity() )
+	{
+		// if we fall onto something moving towards us, we hit harder
+		flVelocity += GetGroundEntity()->GetAbsVelocity().z;
+	}
+
+	if ( GetGroundEntity() && GetGroundEntity()->IsFloating() )
+	{
+		flVelocity -= PLAYER_LAND_ON_FLOATING_OBJECT;
+	}
+
+	flVelocity -= PLAYER_MAX_SAFE_FALL_SPEED;
+
+	if ( flVelocity > 0 )
+	{
+		float flVelocityBasedDamage = flVelocity * DAMAGE_FOR_FALL_SPEED;
+
+		info.AddDamage( flVelocityBasedDamage * flDamageScale );
+	}
+
+	if ( info.GetDamage() > 0 )
+	{
+		TakeDamage( info );
+	}
 }

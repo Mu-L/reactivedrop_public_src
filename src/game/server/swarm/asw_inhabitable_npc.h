@@ -8,6 +8,7 @@ class CASW_Player;
 class CASW_Weapon;
 class CEnvTonemapController;
 class CTonemapTrigger;
+class CASW_Trigger_Fall;
 
 class CASW_Inhabitable_NPC : public CAI_PlayerAlly
 {
@@ -70,6 +71,11 @@ public:
 	void OnTonemapTriggerStartTouch( CTonemapTrigger *pTonemapTrigger );
 	void OnTonemapTriggerEndTouch( CTonemapTrigger *pTonemapTrigger );
 	CUtlVector<CHandle<CTonemapTrigger>> m_hTriggerTonemapList;
+
+	void SetFallTrigger( CASW_Trigger_Fall *pTrigger );
+	void ApplyFallDamage( float flVelocity );
+	virtual float GetDefaultFallDamageScale() { return 0.0f; }
+	CHandle<CASW_Trigger_Fall> m_hFallTrigger;
 };
 
 #endif /* ASW_INHABITABLE_NPC_H */

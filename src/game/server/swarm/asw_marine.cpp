@@ -5326,14 +5326,17 @@ void CASW_Marine::OnWeaponOutOfAmmo(bool bChatter)
 
 void CASW_Marine::PhysicsLandedOnGround( float fFallSpeed )
 {
-	float fFallVel = fabs(fFallSpeed) * 1.17f;			// add 17% onto the fall speed - this makes the fall speeds of AI roughly match up with the ones done by player movement
+	float fFallVel = fabsf( fFallSpeed ) * 1.17f; // add 17% onto the fall speed - this makes the fall speeds of AI roughly match up with the ones done by player movement
 
-	if ( GetGroundEntity() != NULL && GetHealth() > 0 && fFallVel >= PLAYER_FALL_PUNCH_THRESHOLD )
-	{			
-		bool bAlive = true;
-		float fvol = 0.5;
+	//Msg("Checking falling, fall vel = %f\n", fFallVel);
+	if ( GetWaterLevel() == WL_NotInWater || m_hFallTrigger.Get() )
+	{
+		ApplyFallDamage( fFallVel );
+	}
 
-		if ( GetWaterLevel() > 0 )
+	if ( fFallVel >= PLAYER_FALL_PUNCH_THRESHOLD )
+	{
+		if ( GetWaterLevel() > WL_NotInWater )
 		{
 			// They landed in water.
 		}
@@ -5348,49 +5351,25 @@ void CASW_Marine::PhysicsLandedOnGround( float fFallSpeed )
 			// They hit the ground.
 			if ( fFallVel > PLAYER_MAX_SAFE_FALL_SPEED )
 			{
-
-				// If they hit the ground going this fast they may take damage (and die).
-				//bAlive = MoveHelper( )->PlayerFallingDamage();
-#ifndef CLIENT_DLL
 				float fFallVelMod = fFallVel;
 				fFallVelMod -= PLAYER_MAX_SAFE_FALL_SPEED;
 				float flFallDamage = fFallVelMod * DAMAGE_FOR_FALL_SPEED;
-				//Msg("Marine fell with speed %f modded to %f damage is %f\n", fFallVel, fFallVelMod, flFallDamage);
+				if ( asw_debug_marine_damage.GetBool() )
+				{
+					Msg( "Marine fell with speed %f modded to %f damage is %f\n", fFallVel, fFallVelMod, flFallDamage );
+				}
+
 				if ( flFallDamage > 0 )
 				{
-					// fixed fall damage for bots by adding this check 
-					if ( asw_marine_fall_damage.GetBool() )
-					{
-						TakeDamage( CTakeDamageInfo( GetContainingEntity(INDEXENT(0)), GetContainingEntity(INDEXENT(0)), flFallDamage, DMG_FALL ) ); 
-					}
+					// actual fall damage is applied in ApplyFallDamage; this is just to see if we hit the ground hard enough to make a noise
+
 					CRecipientFilter filter;
 					filter.AddRecipientsByPAS( GetAbsOrigin() );
 
 					CBaseEntity::EmitSound( filter, entindex(), "Player.FallDamage" );
 				}
-				bAlive = GetHealth() > 0;
-#endif
-				fvol = 1.0;
 			}
-			else if ( fFallVel > PLAYER_MAX_SAFE_FALL_SPEED / 2 )
-			{
-				fvol = 0.85;
-			}
-			else if ( fFallVel < PLAYER_MIN_BOUNCE_SPEED )
-			{
-				fvol = 0;
-			}				
 		}
-
-		if ( fvol > 0.0 )
-		{
-			// asw todo?
-			// Play landing sound right away.
-			//player->m_flStepSoundTime = 400;
-
-			// Play step sound for current texture.
-			//PlayStepSound( mv->m_vecAbsOrigin, m_pSurfaceData, fvol, true );
-		}			
 	}
 }
 
@@ -5518,6 +5497,11 @@ void CASW_Marine::RequestForcedAction( int iForcedAction )
 		TaskFail( "forced action" );
 		SetSchedule( SCHED_ASW_MELEE_SYSTEM );
 	}
+}
+
+float CASW_Marine::GetDefaultFallDamageScale()
+{
+	return asw_marine_fall_damage.GetFloat();
 }
 
 void CASW_Marine::ModifyOrAppendCriteria( AI_CriteriaSet& set )

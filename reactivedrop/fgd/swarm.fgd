@@ -4411,9 +4411,22 @@
 	output OnEndFollow(void) : "Fired when the point_viewcontrol deactivates, due to the Disable input being received, the Entity to Look At being destroyed, or the Hold Time expiring."
 ]
 
-@SolidClass base(Trigger, Targetname) = asw_trigger_fall :
+@SolidClass base(Targetname, Parentname) = asw_trigger_fall :
 	"A trigger volume that kills any NPCs that touch it."
-[		
+[
+	output OnFallingObject(void) : "Fired whenever something falls into this trigger."
+]
+
+@SolidClass base(Trigger) = trigger_asw_fall :
+	"Causes characters who touch this volume to take fall damage."
+[
+	FlatDamage(integer) : "Flat Damage" : "0" : "Amount of damage character takes no matter what"
+	VelocityDamageScale(float) : "Velocity Damage Scale" : "1" : "Fall damage multiplier based on velocity"
+	ApplyDamageOnLanding(choices) : "Apply Damage When" : 0 : "Apply damage when touching the trigger, or when the fall ends. Only player-controlled characters and bot marines are affected by the latter mode." = [
+		0 : "Immediately"
+		1 : "When Character Lands"
+	]
+
 	output OnFallingObject(void) : "Fired whenever something falls into this trigger."
 ]
 

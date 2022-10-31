@@ -230,10 +230,15 @@ class CASW_Trigger_Fall : public CBaseTrigger
 {
 	DECLARE_CLASS( CASW_Trigger_Fall, CBaseTrigger );
 public:
+	CASW_Trigger_Fall();
 	void Spawn( void );
 	void FallTouch( CBaseEntity *pOther );
 
 	DECLARE_DATADESC();
+
+	int m_nFlatDamage;
+	float m_flVelocityDamageScale;
+	bool m_bApplyDamageOnLanding;
 
 	// Outputs
 	COutputEvent m_OnFallingObject;

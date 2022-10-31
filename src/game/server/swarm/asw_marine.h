@@ -742,6 +742,7 @@ public:
 	void ClearForcedActionRequest() { m_iForcedActionRequest = 0; }
 	bool CanDoForcedAction( int iForcedAction );		// check if we're allowed to perform a forced action (certain abilities limit this)
 	void RequestForcedAction( int iForcedAction );
+	virtual float GetDefaultFallDamageScale() override;
 	CNetworkVar( int, m_iForcedActionRequest );
 	int m_iForcedActionRequestTick;
 

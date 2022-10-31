@@ -4132,15 +4132,33 @@ void CASW_MarineGameMovement::CategorizePosition( void )
 void CASW_MarineGameMovement::CheckFalling( void )
 {
 	float fFallVel = player->m_Local.m_flFallVelocity;
+	if ( !marine->GetGroundEntity() || fFallVel <= 0 )
+	{
+		return;
+	}
+
+	// Clear the fall velocity so the impact doesn't happen again.
+	player->m_Local.m_flFallVelocity = 0;
+
+	if ( IsDead() )
+	{
+		return;
+	}
+
 	//Msg("Checking falling, fall vel = %f\n", fFallVel);
-	if ( marine->GetGroundEntity() != NULL &&
-		 !IsDead() &&
-		 fFallVel >= PLAYER_FALL_PUNCH_THRESHOLD )
+#ifndef CLIENT_DLL
+	if ( marine->GetWaterLevel() == WL_NotInWater || marine->m_hFallTrigger.Get() )
+	{
+		marine->ApplyFallDamage( fFallVel );
+	}
+#endif
+
+	if ( fFallVel >= PLAYER_FALL_PUNCH_THRESHOLD )
 	{
 		bool bAlive = true;
-		float fvol = 0.5;		
+		float fvol = 0.5f;
 
-		if ( marine->GetWaterLevel() > 0 )
+		if ( marine->GetWaterLevel() > WL_NotInWater )
 		{
 			// They landed in water.
 		}
@@ -4152,45 +4170,31 @@ void CASW_MarineGameMovement::CheckFalling( void )
 				fFallVel -= PLAYER_LAND_ON_FLOATING_OBJECT;
 			}
 
-			//
 			// They hit the ground.
-			//
-
-			// asw added this if block: sept 2nd 06
-			if( marine->GetGroundEntity()->GetAbsVelocity().z < 0.0f )
-			{
-				// Player landed on a descending object. Subtract the velocity of the ground entity.
-				player->m_Local.m_flFallVelocity += marine->GetGroundEntity()->GetAbsVelocity().z;
-				player->m_Local.m_flFallVelocity = MAX( 0.1f, player->m_Local.m_flFallVelocity );
-			}
-						
 			if ( fFallVel > PLAYER_MAX_SAFE_FALL_SPEED )
 			{
-				//
-				// If they hit the ground going this fast they may take damage (and die).
-				//
-				//bAlive = MoveHelper( )->PlayerFallingDamage();
 #ifndef CLIENT_DLL
 				float fFallVelMod = fFallVel;
 				fFallVelMod -= PLAYER_MAX_SAFE_FALL_SPEED;
 				float flFallDamage = fFallVelMod * DAMAGE_FOR_FALL_SPEED;
 				if ( asw_debug_marine_damage.GetBool() )
 				{
-					Msg("Marine fell with speed %f modded to %f damage is %f\n", fFallVel, fFallVelMod, flFallDamage);
+					Msg( "Marine fell with speed %f modded to %f damage is %f\n", fFallVel, fFallVelMod, flFallDamage );
 				}
+
 				if ( flFallDamage > 0 )
 				{
-					if ( asw_marine_fall_damage.GetBool() )
-					{
-						marine->TakeDamage( CTakeDamageInfo( GetContainingEntity(INDEXENT(0)), GetContainingEntity(INDEXENT(0)), flFallDamage, DMG_FALL ) ); 
-					}
+					// actual fall damage is applied in ApplyFallDamage; this is just to see if we hit the ground hard enough to make a noise
+
 					CRecipientFilter filter;
 					filter.AddRecipientsByPAS( marine->GetAbsOrigin() );
 
 					CBaseEntity::EmitSound( filter, marine->entindex(), "Player.FallDamage" );
 				}
+
 				bAlive = marine->GetHealth() > 0;
 #endif
+
 				fvol = 1.0;
 			}
 			else if ( fFallVel > PLAYER_MAX_SAFE_FALL_SPEED / 2 )
@@ -4201,11 +4205,8 @@ void CASW_MarineGameMovement::CheckFalling( void )
 			{
 				fvol = 0;
 			}
-			
 		}
 
-		
-		
 		if ( fvol > 0.0 )
 		{
 			//
@@ -4228,20 +4229,11 @@ void CASW_MarineGameMovement::CheckFalling( void )
 				player->m_Local.m_vecPunchAngle.Set( PITCH, 8 );
 			}
 		}
-		
 
-		if (bAlive)
+		if ( bAlive )
 		{
-			MoveHelper( )->PlayerSetAnimation( PLAYER_WALK );
+			MoveHelper()->PlayerSetAnimation( PLAYER_WALK );
 		}
-	}
-
-	//
-	// Clear the fall velocity so the impact doesn't happen again.
-	//
-	if ( marine->GetGroundEntity() != NULL ) 
-	{		
-		player->m_Local.m_flFallVelocity = 0;
 	}
 }
 

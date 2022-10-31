@@ -8,8 +8,13 @@
 #include "triggers.h"
 #include "asw_shareddefs.h"
 #include "asw_triggers.h"
+#include "asw_inhabitable_npc.h"
 
 BEGIN_DATADESC( CASW_Trigger_Fall )
+
+	DEFINE_KEYFIELD( m_nFlatDamage, FIELD_INTEGER, "FlatDamage" ),
+	DEFINE_KEYFIELD( m_flVelocityDamageScale, FIELD_FLOAT, "VelocityDamageScale" ),
+	DEFINE_KEYFIELD( m_bApplyDamageOnLanding, FIELD_BOOLEAN, "ApplyDamageOnLanding" ),
 
 	// Function Pointers
 	DEFINE_FUNCTION( FallTouch ),
@@ -20,7 +25,16 @@ BEGIN_DATADESC( CASW_Trigger_Fall )
 END_DATADESC()
 
 
-LINK_ENTITY_TO_CLASS( asw_trigger_fall, CASW_Trigger_Fall );
+LINK_ENTITY_TO_CLASS( asw_trigger_fall, CASW_Trigger_Fall ); // old and busted
+LINK_ENTITY_TO_CLASS( trigger_asw_fall, CASW_Trigger_Fall ); // the new hotness
+
+
+CASW_Trigger_Fall::CASW_Trigger_Fall()
+{
+	m_nFlatDamage = 0;
+	m_flVelocityDamageScale = 1.0f;
+	m_bApplyDamageOnLanding = true;
+}
 
 
 //-----------------------------------------------------------------------------
@@ -29,6 +43,16 @@ LINK_ENTITY_TO_CLASS( asw_trigger_fall, CASW_Trigger_Fall );
 void CASW_Trigger_Fall::Spawn( void )
 {
 	BaseClass::Spawn();
+
+	if ( ClassMatches( "asw_trigger_fall" ) )
+	{
+		// for compatibility, ignore which spawn flags and keyvalues are set in Hammer
+		AddSpawnFlags( SF_TRIGGER_ALLOW_ALL );
+		m_nFlatDamage = 500;
+		m_flVelocityDamageScale = 0.0f;
+		m_bApplyDamageOnLanding = false;
+	}
+
 	InitTrigger();
 	SetTouch( &CASW_Trigger_Fall::FallTouch );
 }
@@ -39,18 +63,17 @@ void CASW_Trigger_Fall::Spawn( void )
 //-----------------------------------------------------------------------------
 void CASW_Trigger_Fall::FallTouch( CBaseEntity *pOther )
 {
-	// If it's a player, just kill him for now
-	if ( pOther->IsNPC() )
+	if ( !PassesTriggerFilters( pOther ) )
 	{
-		if ( pOther->IsAlive() == false )
+		return;
+	}
+
+	if ( CASW_Inhabitable_NPC *pNPC = dynamic_cast<CASW_Inhabitable_NPC *>( pOther ) )
+	{
+		if ( pNPC->IsAlive() == false )
 			return;
 
-		pOther->TakeDamage( CTakeDamageInfo( this, this, 500, DMG_FALL ) );
-	}
-	else 
-	{
-		// Just remove the entity
-		//UTIL_Remove( pOther );
+		pNPC->SetFallTrigger( this );
 	}
 
 	// Fire our output
