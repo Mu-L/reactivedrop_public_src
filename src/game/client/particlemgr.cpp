@@ -30,6 +30,8 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+extern void RegisterRDDecalParticleOps();
+
 extern IParticleSystemQuery *g_pParticleSystemQuery;
 
 static int g_nParticlesDrawn;
@@ -1014,6 +1016,8 @@ bool CParticleMgr::Init(unsigned long count, IMaterialSystem *pMaterials)
 	// tell particle mgr to add the default simulation + rendering ops
 	g_pParticleSystemMgr->AddBuiltinSimulationOperators();
 	g_pParticleSystemMgr->AddBuiltinRenderingOperators();
+
+	RegisterRDDecalParticleOps();
 
 	// Send true to load the sheets
 	ParseParticleEffects( true );
